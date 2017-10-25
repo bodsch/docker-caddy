@@ -1,0 +1,11 @@
+sudo: required
+
+services:
+  - docker
+
+install:
+  - docker build --tag bodsch/docker-caddy .
+  - docker run --detach --name caddy bodsch/docker-caddy
+
+script:
+  - docker ps | grep -q caddy

@@ -1,0 +1,9 @@
+PORTS = \
+  --publish=80:80 \
+  --publish=2015:2015
+
+VOLUMES =
+#  --volume $(pwd)/Caddyfile:/etc/Caddyfile \
+#  --volume $HOME/.caddy:/root/.caddy
+
+ENV =
