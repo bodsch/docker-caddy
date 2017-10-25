@@ -28,7 +28,7 @@ LABEL \
   org.label-schema.version=${ICINGA_VERSION} \
   org.label-schema.schema-version="1.0" \
   com.microscaling.docker.dockerfile="/Dockerfile" \
-  com.microscaling.license="GNU General Public License v3.0"
+  com.microscaling.license="MIT License"
 
 # ---------------------------------------------------------------------------------------
 # install caddy
@@ -40,24 +40,18 @@ RUN \
   apk --quiet --no-cache update && \
   apk --quiet --no-cache upgrade && \
   apk --no-cache add --virtual .build-deps \
-    g++ git go make
-
-RUN \
+    g++ git go make && \
   echo "get sources ..." && \
   go get github.com/mholt/caddy || true && \
   cd ${GOPATH}/src/github.com/mholt/caddy && \
   #
-  # build stable packages
+  # switch to tag
   if [ "${BUILD_TYPE}" == "stable" ] ; then \
     echo "switch to stable Tag v${VERSION}" && \
     git checkout tags/v${VERSION} 2> /dev/null ; \
-  fi
-
-RUN \
+  fi && \
   # plugin helper
-  go get -v github.com/abiosoft/caddyplug/caddyplug
-
-RUN \
+  go get -v github.com/abiosoft/caddyplug/caddyplug && \
   GOOS=linux \
   GOARCH=amd64 \
   PATH=${GOPATH}/bin/:$PATH && \
@@ -67,19 +61,17 @@ RUN \
     echo "get plugin ${plugin}" ; \
     go get -v $(caddyplug package $plugin) || true; \
     printf "package caddyhttp\nimport _ \"$(caddyplug package $plugin)\"" > ${GOPATH}/src/github.com/mholt/caddy/caddyhttp/$plugin.go ; \
-  done
-
-RUN \
-  git clone https://github.com/caddyserver/builds ${GOPATH}/src/github.com/caddyserver/builds
-
-# build
-RUN \
+  done && \
+  git clone https://github.com/caddyserver/builds ${GOPATH}/src/github.com/caddyserver/builds && \
+  # build
   cd ${GOPATH}/src/github.com/mholt/caddy/caddy && \
     git checkout -f && \
     GOOS=linux GOARCH=amd64 go run build.go -goos=$GOOS -goarch=$GOARCH -goarm=$GOARM && \
-    mv caddy /usr/bin
-
-RUN \
+    mv caddy /usr/bin && \
+  # validate install
+  /usr/bin/caddy -version && \
+  /usr/bin/caddy -plugins && \
+  # clean up
   go clean -i -r && \
   apk del .build-deps && \
   rm -rf \
@@ -93,16 +85,10 @@ RUN \
     /root/lib \
     /usr/local/*
 
-
-# validate install
-RUN \
-  /usr/bin/caddy -version && \
-  /usr/bin/caddy -plugins
-
-VOLUME /root/.caddy /srv
-WORKDIR /srv
-
 COPY rootfs/ /
 
-ENTRYPOINT ["/usr/bin/caddy"]
-CMD ["--conf", "/etc/Caddyfile", "--log", "stdout"]
+VOLUME [ "/root/.caddy" "/srv" ]
+WORKDIR /srv
+
+ENTRYPOINT [ "/usr/bin/caddy" ]
+CMD [ "--conf", "/etc/Caddyfile", "--log", "stdout" ]
